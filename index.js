@@ -5,7 +5,7 @@ const toHex = (str) => Color(nameToHex(str)).hexString();
 const values = require('lodash.values');
 
 // Constants for the particle simulation.
-const MAX_PARTICLES = 500;
+const MAX_PARTICLES = 300;
 const BLOOD_GRAVITY = 0.075;
 
 const BLOOD_SPEED = 1
@@ -13,6 +13,8 @@ const BLOOD_SIZE = 3;
 const BLOOD_AMOUNT = 10
 const BLOOD_FADE = .96;
 const BLOOD_POOL = true
+const DROP_SIZE = 6 // Must be greater than bloodSize
+const BIGDROP_CHANCE = .30
 
 const PARTICLE_VELOCITY_RANGE = {
   x: [-0.01, 0.01],
@@ -30,7 +32,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
       this._resizeCanvas = this._resizeCanvas.bind(this);
       this._onTerminal = this._onTerminal.bind(this);
       this._onCursorChange = this._onCursorChange.bind(this);
-      this._spawnParticles = throttle(this._spawnParticles.bind(this), 25, { trailing: false });
+      this.createBloodDrip = throttle(this.createBloodDrip.bind(this), 25, { trailing: false });
       // Initial particle state
       this._particles = [];
       // We'll set these up when the terminal is available in `_onTerminal`
@@ -78,17 +80,16 @@ exports.decorateTerm = (Term, { React, notify }) => {
     _drawFrame() {
       this._canvasContext.clearRect(0, 0, this._canvas.width, this._canvas.height);
       this._particles.forEach((particle) => {
-        particle.velocity.y += BLOOD_GRAVITY;
-
         if(BLOOD_POOL){
           if (particle.y < window.innerHeight * .99) {
             // Falling
+            particle.velocity.y += BLOOD_GRAVITY;
             particle.x += particle.velocity.x;
             particle.y += particle.velocity.y;
           }else{
             // Pooling 
             particle.x += particle.velocity.x*100;
-            particle.alpha *= .98;
+            // particle.y -= particle.velocity.y;
           }
         }else{
             particle.x += particle.velocity.x;
@@ -97,7 +98,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         }
         
         this._canvasContext.fillStyle = `rgba(${particle.color.join(',')}, ${particle.alpha})`;
-        this._canvasContext.fillRect(Math.round(particle.x - 1), Math.round(particle.y - 1), BLOOD_SIZE, BLOOD_SIZE);
+        this._canvasContext.fillRect(Math.round(particle.x - 1)-(particle.size/2), Math.round(particle.y - 1), particle.size, particle.size);
       });
       this._particles = this._particles
         .slice(Math.max(this._particles.length - MAX_PARTICLES, 0))
@@ -106,7 +107,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
     }
 
     // Pushes `PARTICLE_NUM_RANGE` new particles into the simulation.
-    _spawnParticles(x, y) {
+    createBloodDrip(x, y) {
       const numParticles = BLOOD_AMOUNT + Math.round(Math.random() * BLOOD_AMOUNT);
       const colorCode = toHex('red')
       const r = parseInt(colorCode.slice(1, 3), 16);
@@ -114,22 +115,40 @@ exports.decorateTerm = (Term, { React, notify }) => {
       const b = parseInt(colorCode.slice(5, 7), 16);
       const color = [r, g, b];
       for (let i = 0; i < numParticles; i++) {
-        this._particles.push(this._createParticle(x, y, color));
+        if(i==0){
+          this._particles.push(this.createBloodParticle(x, y, color, true));
+        }else{
+          this._particles.push(this.createBloodParticle(x, y, color));
+        }
       }
     }
 
-    _createParticle(x, y, color) {
-      return {
-        x,
-        y: y,
-        alpha: 1,
-        color,
-        velocity: {
+    createBloodParticle(x, y, color, bigdrop) {
+      let velocity = null
+      let size = null
+      if(bigdrop == true){
+        velocity = {
+          x: PARTICLE_VELOCITY_RANGE.x[0] + Math.random() *
+            (PARTICLE_VELOCITY_RANGE.x[1] - PARTICLE_VELOCITY_RANGE.x[0]),
+          y: PARTICLE_VELOCITY_RANGE.y[1]
+        }
+        size = Math.random() * (DROP_SIZE - BLOOD_SIZE) + BLOOD_SIZE;
+      }else{
+        velocity = {
           x: PARTICLE_VELOCITY_RANGE.x[0] + Math.random() *
             (PARTICLE_VELOCITY_RANGE.x[1] - PARTICLE_VELOCITY_RANGE.x[0]),
           y: PARTICLE_VELOCITY_RANGE.y[0] + Math.random() *
             (PARTICLE_VELOCITY_RANGE.y[1] - PARTICLE_VELOCITY_RANGE.y[0])
         }
+        size = BLOOD_SIZE
+      }
+      return {
+        x: x,
+        y: y,
+        alpha: 1,
+        color,
+        size,
+        velocity: velocity
       };
     }
 
@@ -139,7 +158,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
       const { top, left } = this._cursor.getBoundingClientRect();
       const origin = this._div.getBoundingClientRect();
       requestAnimationFrame(() => {
-        this._spawnParticles(left + origin.left, top + origin.top);
+        this.createBloodDrip(left + origin.left, top + origin.top);
       });
     }
 
