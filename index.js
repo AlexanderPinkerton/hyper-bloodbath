@@ -8,12 +8,14 @@ const values = require('lodash.values');
 const MAX_PARTICLES = 300;
 const BLOOD_GRAVITY = 0.075;
 
+const BLOOD_CHANCE = .33
 const BLOOD_SPEED = 1
 const BLOOD_SIZE = 3;
 const BLOOD_AMOUNT = 10
 const BLOOD_FADE = .96;
 const BLOOD_POOL = true
-const DROP_SIZE = 6 // Must be greater than bloodSize
+const DROP_MAX = 7
+const DROP_MIN = 4 // Must be greater than bloodSize
 const BIGDROP_CHANCE = .30
 
 const PARTICLE_VELOCITY_RANGE = {
@@ -89,6 +91,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
           }else{
             // Pooling 
             particle.x += particle.velocity.x*100;
+            particle.alpha *= 0.99;
             // particle.y -= particle.velocity.y;
           }
         }else{
@@ -132,7 +135,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
             (PARTICLE_VELOCITY_RANGE.x[1] - PARTICLE_VELOCITY_RANGE.x[0]),
           y: PARTICLE_VELOCITY_RANGE.y[1]
         }
-        size = Math.random() * (DROP_SIZE - BLOOD_SIZE) + BLOOD_SIZE;
+        size = Math.random() * (DROP_MAX - DROP_MIN) + DROP_MIN;
       }else{
         velocity = {
           x: PARTICLE_VELOCITY_RANGE.x[0] + Math.random() *
@@ -157,9 +160,12 @@ exports.decorateTerm = (Term, { React, notify }) => {
       // spawn new articles.
       const { top, left } = this._cursor.getBoundingClientRect();
       const origin = this._div.getBoundingClientRect();
-      requestAnimationFrame(() => {
-        this.createBloodDrip(left + origin.left, top + origin.top);
-      });
+      const drip = Math.random() < BLOOD_CHANCE
+      if(drip){
+        requestAnimationFrame(() => {
+          this.createBloodDrip(left + origin.left, top + origin.top);
+        });
+      }
     }
 
     render() {
