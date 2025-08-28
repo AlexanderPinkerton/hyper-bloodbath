@@ -1,7 +1,7 @@
 # Bloodbath
 This plugin is for the hyper terminal. I will cause the cursor to drip blood when typing.
 #### Demo GIF
-It looks better in person. Gif ruins the illusion
+It looks better in person. Gif ruins the smoothness
 ![](https://github.com/AlexanderPinkerton/hyper-bloodbath/blob/master/bloodbath-demo.gif?raw=true)
 #### Installation
 ###### hyper-bloodbath is an [npm package.](https://www.npmjs.com/package/hyper-bloodbath)
